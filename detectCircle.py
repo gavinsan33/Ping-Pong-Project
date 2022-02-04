@@ -1,17 +1,17 @@
-from turtle import update
 import cv2
 from cv2 import getTrackbarPos
 from matplotlib.pyplot import get
 import numpy as np
 import time
 import pygame
+from scipy.optimize import curve_fit
 
-#capture = cv2.VideoCapture("C:/Users/gavin/Documents/pingpong.mp4")
-capture = cv2.VideoCapture(0)
+capture = cv2.VideoCapture("C:/Users/gavin/Documents/pingpong.mp4")
+#capture = cv2.VideoCapture(0)
 capture.read()
 
-capture.set(3, 1280)
-capture.set(4, 720)
+#capture.set(3, 1280)
+#capture.set(4, 720)
 
 if(not capture.isOpened()):
     print("ERROR")
@@ -77,7 +77,7 @@ while True:
     success, img = capture.read()
     img = cv2.flip(img, 1)
     
-    '''
+    
     #IF USING PRE-RECORDED VIDEO#
     percent = 50
     width = int(img.shape[1] * percent / 100)
@@ -87,7 +87,7 @@ while True:
     img = cv2.resize(img, dim, interpolation=cv2.INTER_AREA)
     height, width = img.shape[:2]
     #############################
-    '''
+    
     
     imgHSV = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 
@@ -126,23 +126,18 @@ while True:
             ballLocations.append([x, y, r, time.time()])
             cv2.putText(img, f"X: {x} Y: {y} radius: {r}", (7, 70), cv2.FONT_HERSHEY_PLAIN, 2, (0, 0, 255), 3)
             
-            boxX1 = x - r
-            boxY1 = y - r
-            boxX2 = x + r
-            boxY2 = y + r
-            
-            #draw rectangle
-            cv2.rectangle(img, (boxX1, boxY1), (boxX2, boxY2), (255, 0, 0), 3)
-            # draw the outer circle
-            cv2.circle(img, (x, y), int(i[2]), (0, 0, 255), 2)
-            # draw the center of the circle
-            cv2.circle(img, (x, y), 2, (0, 0, 255), 3)
-
             #draw Y Line
             cv2.line(img, (x, 0), (x, width), (255, 0, 0), 3)
 
             #draw X Line
             cv2.line(img, (0, y), (width, y), (0, 255, 0), 3)
+
+            # draw the outer circle
+            cv2.circle(img, (x, y), int(i[2]), (0, 0, 255), 2)
+            
+            # draw the center of the circle
+            cv2.circle(img, (x, y), 2, (0, 0, 255), 3)
+
 
 
     if(DISPLAY_FPS):
@@ -153,6 +148,10 @@ while True:
         cv2.putText(img, fps, (7, 70), cv2.FONT_HERSHEY_PLAIN, 3, (0, 0, 0), 3)
     
     cv2.imshow('circles', img)
+    
+    if(cv2.waitKey(1) & 0xFF == ord('a')):
+        2
+        break
 
     if(cv2.waitKey(1) & 0xFF == ord('q')):
         capture.release()
@@ -169,7 +168,7 @@ startTime = time.time()
 while running:
     
     for x, y, r, t in ballLocations:
-        pygame.draw.circle(screen, (0, 255, 0), (x, y), r)
+        pygame.draw.circle(screen, (0, 255, 0), (x, y), 3)
         pygame.display.update()
 
     
