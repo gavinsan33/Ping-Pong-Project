@@ -4,23 +4,26 @@ from matplotlib.pyplot import get
 import numpy as np
 import time
 import pygame
-from scipy.optimize import curve_fit
 
-capture = cv2.VideoCapture("C:/Users/gavin/Documents/pingpong.mp4")
-#capture = cv2.VideoCapture(0)
-capture.read()
+#capture = cv2.VideoCapture("./pingpong.mp4")
+capture = cv2.VideoCapture(0, cv2.CAP_DSHOW)
 
-#capture.set(3, 1280)
-#capture.set(4, 720)
+width = 768
+height = 480
+
+#RESIZES LIVE CAMERA FEED
+capture.set(3, width)
+capture.set(4, height)
+
 
 if(not capture.isOpened()):
     print("ERROR")
 
-
+#NEEDED FOR SLIDERS TO WORK#
 def nothing(a):
     pass
 
-BALL_COLOR = "GREEN"
+BALL_COLOR = "PINK"
 DISPLAY_FPS = False
 
 cv2.namedWindow('sliders', cv2.WINDOW_NORMAL)
@@ -57,6 +60,17 @@ elif(BALL_COLOR == "GREEN"):
     cv2.createTrackbar('R2', 'sliders', 82, 255, nothing)
     cv2.createTrackbar('G2', 'sliders', 146, 255, nothing)
     cv2.createTrackbar('B2', 'sliders', 255, 255, nothing)
+elif(BALL_COLOR == "PINK"):
+    cv2.createTrackbar('param1', 'sliders', 27, 200, nothing)
+    cv2.createTrackbar('param2', 'sliders', 6, 200, nothing)
+    cv2.createTrackbar('min radius', 'sliders', 1, 200, nothing)
+    cv2.createTrackbar('max radius', 'sliders', 35, 500, nothing)
+    cv2.createTrackbar('R1', 'sliders', 131, 255, nothing)
+    cv2.createTrackbar('G1', 'sliders', 79, 255, nothing)
+    cv2.createTrackbar('B1', 'sliders', 130, 255, nothing)
+    cv2.createTrackbar('R2', 'sliders', 167, 255, nothing)
+    cv2.createTrackbar('G2', 'sliders', 227, 255, nothing)
+    cv2.createTrackbar('B2', 'sliders', 251, 255, nothing)
 
 
 cv2.createTrackbar('TableX1', 'sliders', 207, 1000, nothing)
@@ -68,25 +82,24 @@ cv2.createTrackbar('TableY2', 'sliders', 273, 1000, nothing)
 prev_frame_time = 0
 new_frame_time = 0
 
-ballLocations = []
+ballLocations1 = []
+ballLocations2 = []
 
-height = 0
-width = 0
 
 while True:
     success, img = capture.read()
-    img = cv2.flip(img, 1)
+    #img = cv2.flip(img, 1)
     
     
-    #IF USING PRE-RECORDED VIDEO#
-    percent = 50
-    width = int(img.shape[1] * percent / 100)
-    height = int(img.shape[0] * percent / 100)
-    dim = (width, height)
+    # #IF USING PRE-RECORDED VIDEO#
+    # percent = 50
+    # width = int(img.shape[1] * percent / 100)
+    # height = int(img.shape[0] * percent / 100)
+    # dim = (width, height)
 
-    img = cv2.resize(img, dim, interpolation=cv2.INTER_AREA)
-    height, width = img.shape[:2]
-    #############################
+    # img = cv2.resize(img, dim, interpolation=cv2.INTER_AREA)
+    # height, width = img.shape[:2]
+    # #############################
     
     
     imgHSV = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
@@ -105,7 +118,7 @@ while True:
     gray = cv2.medianBlur(imgMasked, 5)
     gray = cv2.cvtColor(gray, cv2.COLOR_BGR2GRAY)
 
-    circles = cv2.HoughCircles(gray, cv2.HOUGH_GRADIENT, 1, minDist=100, param1=cv2.getTrackbarPos('param1', 'sliders'), param2=cv2.getTrackbarPos('param2', 'sliders'), 
+    circles = cv2.HoughCircles(gray, cv2.HOUGH_GRADIENT, 1, minDist=1000, param1=cv2.getTrackbarPos('param1', 'sliders'), param2=cv2.getTrackbarPos('param2', 'sliders'), 
     minRadius=cv2.getTrackbarPos('min radius', 'sliders'), maxRadius=cv2.getTrackbarPos('max radius', 'sliders'))
 
 
@@ -123,7 +136,7 @@ while True:
             y = int(i[1])
             r = int(i[2])
 
-            ballLocations.append([x, y, r, time.time()])
+            ballLocations1.append([x, y, r, time.time()])
             cv2.putText(img, f"X: {x} Y: {y} radius: {r}", (7, 70), cv2.FONT_HERSHEY_PLAIN, 2, (0, 0, 255), 3)
             
             #draw Y Line
@@ -148,10 +161,6 @@ while True:
         cv2.putText(img, fps, (7, 70), cv2.FONT_HERSHEY_PLAIN, 3, (0, 0, 0), 3)
     
     cv2.imshow('circles', img)
-    
-    if(cv2.waitKey(1) & 0xFF == ord('a')):
-        2
-        break
 
     if(cv2.waitKey(1) & 0xFF == ord('q')):
         capture.release()
@@ -167,7 +176,7 @@ startTime = time.time()
 
 while running:
     
-    for x, y, r, t in ballLocations:
+    for x, y, r, t in ballLocations1:
         pygame.draw.circle(screen, (0, 255, 0), (x, y), 3)
         pygame.display.update()
 
