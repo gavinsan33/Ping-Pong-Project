@@ -24,14 +24,13 @@ capture.set(3, width)
 capture.set(4, height)
 
 
-if(not capture.isOpened()):
-    print("ERROR")
+assert capture.isOpened()
 
 #NEEDED FOR SLIDERS TO WORK
 def nothing(a):
     pass
 
-BALL_COLOR = "PINK"
+BALL_COLOR = "WHITE"
 DISPLAY_FPS = False
 
 cv2.namedWindow('sliders', cv2.WINDOW_NORMAL)
@@ -48,14 +47,14 @@ if(BALL_COLOR == "ORANGE"):
     cv2.createTrackbar('G2', 'sliders', 179, 255, nothing)
     cv2.createTrackbar('B2', 'sliders', 255, 255, nothing)
 elif(BALL_COLOR == "WHITE"):
-    cv2.createTrackbar('param1', 'sliders', 46, 200, nothing)
-    cv2.createTrackbar('param2', 'sliders', 113, 200, nothing)
+    cv2.createTrackbar('param1', 'sliders', 27, 200, nothing)
+    cv2.createTrackbar('param2', 'sliders', 8, 200, nothing)
     cv2.createTrackbar('min radius', 'sliders', 3, 200, nothing)
     cv2.createTrackbar('max radius', 'sliders', 80, 500, nothing)
-    cv2.createTrackbar('R1', 'sliders', 32, 255, nothing)
-    cv2.createTrackbar('G1', 'sliders', 65, 255, nothing)
-    cv2.createTrackbar('B1', 'sliders', 132, 255, nothing)
-    cv2.createTrackbar('R2', 'sliders', 97, 255, nothing)
+    cv2.createTrackbar('R1', 'sliders', 130, 255, nothing)
+    cv2.createTrackbar('G1', 'sliders', 85, 255, nothing)
+    cv2.createTrackbar('B1', 'sliders', 228, 255, nothing)
+    cv2.createTrackbar('R2', 'sliders', 255, 255, nothing)
     cv2.createTrackbar('G2', 'sliders', 255, 255, nothing)
     cv2.createTrackbar('B2', 'sliders', 255, 255, nothing)
 elif(BALL_COLOR == "GREEN"):
@@ -93,7 +92,6 @@ new_frame_time = 0
 ballLocations1 = []
 locCount1 = 0
 bounceLocs = []
-
 bounces_on_current_side = 0
 has_moved_above_line = True
 
@@ -117,10 +115,23 @@ def getCurve(points):
 
     popt, pcov = curve_fit(quadratic, x, y)
 
+    ###TAKEN DIRECTLY FROM STACK OVERFLOW###
+    #CALCULATES CORRELATION COEFFICIENT
+    residuals = y - quadratic(x, *popt)
+    ss_res = np.sum(residuals**2)
+    ss_tot = np.sum((y - np.mean(y))**2)
+    r_squared = 1 - (ss_res / ss_tot)
+    #######################################
+
+    #print(r_squared)
+
+    if(r_squared < 0.3):
+        return None
+
     a = popt[0]
     b = popt[1]
     c = popt[2]
-
+        
     table_intercept = quadratic(invert_y(tableLoc), a, b, c)
 
     return curve(a, b, c, table_intercept)
@@ -241,15 +252,21 @@ curves = []
 if(len(bounceLocs) >= 1):
 
     pre_bounce_points = ballLocations1[0 : bounceLocs[0].index]
-    curves.append(getCurve(pre_bounce_points))
+    cstart = getCurve(pre_bounce_points)
+    if(cstart != None):
+        curves.append(cstart)
 
     for i in range(len(bounceLocs) - 1):
         start_point  = bounceLocs[i].index
         end_point = bounceLocs[i + 1].index
-        curves.append(getCurve(ballLocations1[start_point : end_point]))
+        cmid = getCurve(ballLocations1[start_point : end_point])
+        if(cmid != None):
+            curves.append(cmid)
     
     post_bounce_points = ballLocations1[bounceLocs[-1].index :]
-    curves.append(getCurve(post_bounce_points))
+    cfinal = getCurve(post_bounce_points)
+    if(cfinal != None):
+        curves.append(cstart)
 
 
 for parab in curves:

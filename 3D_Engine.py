@@ -124,11 +124,6 @@ def Cube(len, width, height, pos, color, outline):
 
     glEnd()
 
-def plane(len, width, height, pos, color):
-    x, y, z = pos
-
-    
-
 
 pygame.init()
 
@@ -168,20 +163,17 @@ while True:
     Cube(9, 5, 0.01, (0, 0, 2.25), (0, 0, 1), True)
     Cube(9, 0.01, 0.01, (0, 0, 2.25), (0, 0, 1), True)
 
-    #BALL TEST
+    #BALL
     glPushMatrix()
     quad = gluNewQuadric()
     glTranslate(x, y, 2.5)
     ball = gluSphere(quad, 0.25, 50, 50)
     x += 0.1
-    y += 0.2
+    y += 0.0
     glPopMatrix()
-
 
     #NET
     Cube(0.1, 5, 0.5, (0, 0, 3), (.44, .43, .40), True)
-
-
 
     pygame.display.flip()
     pygame.time.wait(10)
