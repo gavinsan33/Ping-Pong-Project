@@ -1,7 +1,9 @@
+import math
 import pygame
 from pygame.locals import *
 from OpenGL.GL import *
 from OpenGL.GLU import * 
+import numpy as np
 
 def Pyr():
     pyr_vert = (
@@ -124,6 +126,37 @@ def Cube(len, width, height, pos, color, outline):
 
     glEnd()
 
+def Circle(radius, resolution, pos, color, outline):
+    x, y, z = pos
+    
+    vert_list = []
+    DEGREES_PER_VERT = 360.0 / resolution
+
+    vert_list.append((x, y, z))
+
+    for i in range(resolution):
+        degrees = i * DEGREES_PER_VERT
+        cos = math.cos(degrees)
+        sin = math.sin(degrees)
+
+        vert_list.append((radius * cos + x, radius * sin + y, z))
+
+    verticies = tuple(vert_list)
+
+    surfaces = []
+
+    for i in range(1, resolution):
+        surfaces.append((0, i, i + 1))
+
+
+    glBegin(GL_TRIANGLES)
+    glColor3fv(color)
+
+    for s in surfaces[1:]:
+        for vertex in s:
+            glVertex3fv(verticies[vertex])
+    
+    glEnd()
 
 pygame.init()
 
@@ -138,6 +171,9 @@ glRotatef(-45, 0, 0, 1)
 x = -5.0
 y = -2.0
 
+
+
+
 while True:
     for event in pygame.event.get():
 
@@ -151,6 +187,7 @@ while True:
 
     #FLOOR
     #Cube(20, 20, 0.01, (0, 0, 0), (0, 1, 1), False)
+    Circle(15, 500, (0, 0, 0), (0, 1, 0.25), False)
 
     #TABLE LEGS
     Cube(0.1, 0.1, 2, (-6, -4, 0), (.41, .35, .2), False)
@@ -174,6 +211,7 @@ while True:
 
     #NET
     Cube(0.1, 5, 0.5, (0, 0, 3), (.44, .43, .40), True)
+
 
     pygame.display.flip()
     pygame.time.wait(10)
