@@ -17,6 +17,7 @@ from OpenGL.GL import *
 from OpenGL.GLU import * 
 import math
 import sys
+from turn import turn
 
 #capture = cv2.VideoCapture("./pingpong.mp4")
 capture = cv2.VideoCapture(0, cv2.CAP_DSHOW)
@@ -77,7 +78,7 @@ elif(BALL_COLOR == "PINK"):
     cv2.createTrackbar('param1', 'sliders', 27, 200, nothing)
     cv2.createTrackbar('param2', 'sliders', 3, 200, nothing)
     cv2.createTrackbar('min radius', 'sliders', 1, 200, nothing)
-    cv2.createTrackbar('max radius', 'sliders', 35, 500, nothing)
+    cv2.createTrackbar('max radius', 'sliders', 40, 500, nothing)
     cv2.createTrackbar('R1', 'sliders', 125, 255, nothing)
     cv2.createTrackbar('G1', 'sliders', 106, 255, nothing)
     cv2.createTrackbar('B1', 'sliders', 130, 255, nothing)
@@ -137,15 +138,14 @@ def getCurve(points):
 
     #print(r_squared)
 
-    if(r_squared < 0.5):
-        return None
+    # if(r_squared < 0.5):
+    #     return None
 
     a = popt[0]
     b = popt[1]
     c = popt[2]
 
     table_intercept = x[-1]
-    print("intercept: " + str(table_intercept))
 
     delta_time = points[-1].time - points[0].time
 
@@ -247,10 +247,9 @@ def Circle(radius, resolution, pos, color, outline):
     glEnd()
 
 def update_3D_render(ballX, ballY, ballZ):
-    glRotatef(0.25, 0, 0, 1)
+    #glRotatef(0.25, 0, 0, 1)
     glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
     
-
     #FLOOR
     #Circle(15, 500, (0, 0, 0), (0, 1, 0.25), False)
 
@@ -310,7 +309,7 @@ while True:
 
     circles = None
     circles = cv2.HoughCircles(gray, cv2.HOUGH_GRADIENT, 1, minDist=1000, param1=cv2.getTrackbarPos('param1', 'sliders'), param2=cv2.getTrackbarPos('param2', 'sliders'), 
-    minRadius=cv2.getTrackbarPos('min radius', 'sliders'), maxRadius=cv2.getTrackbarPos('max radius', 'sliders'))
+    minRadius = cv2.getTrackbarPos('min radius', 'sliders'), maxRadius=cv2.getTrackbarPos('max radius', 'sliders'))
 
 
     tableLoc = cv2.getTrackbarPos('Table', 'sliders')
@@ -340,13 +339,14 @@ while True:
 
             loc = ballLoc(x, y, r, time.time(), side, locCount1)
             ballLocations1.append(loc)
+            locCount1 += 1
             
 
             if(len(ballLocations1) >= 2):
                 if(ballLocations1[-2].side != ballLocations1[-1].side):
                     bounces_on_current_side = 0
                 
-            if(y >= (tableLoc - 20) and has_moved_above_line):
+            if(y >= (tableLoc - 10) and has_moved_above_line):
                 if(bounces_on_current_side < 2):
                     bounceLocs.append(loc)
                     first_of_turn = False
@@ -355,7 +355,7 @@ while True:
                     bounces_on_current_side += 1
                 
         
-            if(y < (tableLoc - 20)):
+            if(y < (tableLoc - 10)):
                 has_moved_above_line = True
             
             if(bounces_on_current_side == 2):
@@ -384,16 +384,24 @@ while True:
     
     elif(not first_of_turn):
         if(len(ballLocations1) >= 2):
+            
             if(time.time() - ballLocations1[-1].time >= 1.5):
-                if(bounceLocs[-1].side == "Left"):
-                    left_score += 1
+                if(bounces_on_current_side == 0):
+                    if(bounceLocs[-1].side == "Left"):
+                        right_score += 1
+                    else:
+                        left_score += 1
                 else:
-                    right_score += 1
+                    if(bounceLocs[-1].side == "Left"):
+                        left_score += 1
+                    else:
+                        right_score += 1
+                    
+
                 beep.play()
                 bounces_on_current_side = 0
                 first_of_turn = True
                 time.sleep(3)
-
 
 
     if(DISPLAY_FPS):
@@ -402,10 +410,6 @@ while True:
         prev_frame_time = new_frame_time
         fps = str(fps)
         cv2.putText(img, fps, (7, 70), cv2.FONT_HERSHEY_PLAIN, 3, (0, 0, 0), 3)
-    
-    
-    for loc in bounceLocs:
-                cv2.circle(img, (loc.x, loc.y), 3, (0, 0, 255), 10)
 
     
     cv2.putText(img, f"Left Score: {left_score} Right Score: {right_score}", (7, 70), cv2.FONT_HERSHEY_PLAIN, 2, (0, 0, 255), 3)
@@ -415,100 +419,110 @@ while True:
         capture.release()
         cv2.destroyAllWindows()
         break
-    elif(0xFF == ord('e')):
-        sys.exit(0)
     
 
 #CURVE CALCULATION
-# curves = []
+curves = []
 
+if(len(bounceLocs) >= 1):
 
-# if(len(bounceLocs) >= 1):
+    try:
+        pre_bounce_points = ballLocations1[0 : bounceLocs[0].index]
+        cstart = getCurve(pre_bounce_points)
+        if(cstart != None):
+            curves.append(cstart)
+    except:
+        print("1 failed")
+        pass
 
-#     pre_bounce_points = ballLocations1[0 : bounceLocs[0].index]
-#     cstart = getCurve(pre_bounce_points)
-#     if(cstart != None):
-#         curves.append(cstart)
+   
+    for i in range(len(bounceLocs) - 1):
+        try:
+            start_point  = bounceLocs[i].index
+            end_point = bounceLocs[i + 1].index
+            cmid = getCurve(ballLocations1[start_point : end_point])
+            if(cmid != None):
+                curves.append(cmid)
+        except:
+            pass
 
-#     for i in range(len(bounceLocs) - 1):
-#         start_point  = bounceLocs[i].index
-#         end_point = bounceLocs[i + 1].index
-#         cmid = getCurve(ballLocations1[start_point : end_point])
-#         if(cmid != None):
-#             curves.append(cmid)
     
-    # post_bounce_points = ballLocations1[bounceLocs[-1].index :]
-    # cfinal = getCurve(post_bounce_points)
-    # if(cfinal != None):
-    #     curves.append(cfinal)
+    try:
+        post_bounce_points = ballLocations1[bounceLocs[-1].index : len(ballLocations1)]
+        cfinal = getCurve(post_bounce_points)
+
+        if(cfinal != None):
+            curves.append(cfinal)
+    except:
+        print("3 failed")
+        pass
 
 
 #SHOW CURVE ON GRAPH
-# for parab in curves:
-#     x_vals = np.arange(0, width, 1)
-#     y_vals = quadratic(x_vals, parab.a, parab.b, parab.c)
-#     plt.plot(x_vals, y_vals, 'b')
-#     plt.ylim(ymin=invert_y(tableLoc), ymax=height)
+for parab in curves:
+    x_vals = np.arange(0, width, 1)
+    y_vals = quadratic(x_vals, parab.a, parab.b, parab.c)
+    plt.plot(x_vals, y_vals, 'b')
+    plt.ylim(ymin=invert_y(tableLoc), ymax=height)
 
-# x_points = []
-# y_points = []
+x_points = []
+y_points = []
 
-# for loc in ballLocations1:
-#     x_points.append(loc.x)
-#     y_points.append(invert_y(loc.y))
+for loc in ballLocations1:
+    x_points.append(loc.x)
+    y_points.append(invert_y(loc.y))
 
-# plt.plot(x_points, y_points, 'ok')
-# plt.vlines(x=netLoc, ymin=0, ymax=height, color='r', linestyle='-')
-# plt.show()
+plt.plot(x_points, y_points, 'ok')
+plt.vlines(x=netLoc, ymin=0, ymax=height, color='r', linestyle='-')
+plt.show()
 
 #3D TABLE
-# pygame.init()
+pygame.init()
 
-# display = (800, 600)
-# pygame.display.set_mode(display, DOUBLEBUF|OPENGL)
-# gluPerspective(35, (16 / 9), 0.1, 60.0)
-# glTranslatef(0.0, 0.0, -30)
+display = (800, 600)
+pygame.display.set_mode(display, DOUBLEBUF|OPENGL)
+gluPerspective(35, (16 / 9), 0.1, 60.0)
+glTranslatef(0.0, 0.0, -30)
 
-# glRotatef(-70, 1, 0, 0)
-# glRotatef(-45, 0, 0, 1)
+glRotatef(-70, 1, 0, 0)
+glRotatef(-45, 0, 0, 1)
 
-# ballX = 0
-# ballY = 0
-# ballZ = 0
+ballX = 0
+ballY = 0
+ballZ = 0
 
-# real_table_height = invert_y(tableLoc)
+real_table_height = invert_y(tableLoc)
 
-# while True:
+while True:
 
-#     for parab in curves:
-#         x_vals = np.arange(0, width, 1)
-#         y_vals = quadratic(x_vals, parab.a, parab.b, parab.c)
-#         scaled_x_vals = (x_vals * 9.0) / float(width / 2)
-#         scaled_y_vals = (y_vals * 3.0) / float(tableLoc)
+    for parab in curves:
+        x_vals = np.arange(0, width, 1)
+        z_vals = quadratic(x_vals, parab.a, parab.b, parab.c)
+        scaled_x_vals = (x_vals * 9.0) / float(width / 2)
+        scaled_z_vals = (z_vals * 3.0) / float(tableLoc)
     
 
-#         #t = parab.time_span
-#         #wait_per_ball_move = int(t / len(scaled_x_vals))
-#         wait_per_ball_move = 5
+        #t = parab.time_span
+        #wait_per_ball_move = int(t / len(scaled_x_vals))
+        wait_per_ball_move = 5
 
-#         scaled_intercept = int(((parab.intercept * 9.0) / float(width)) - 4.5)
-#         #print("scaled intercept: " + str(scaled_intercept))
+        scaled_intercept = int(((parab.intercept * 9.0) / float(width)) - 4.5)
+        #print("scaled intercept: " + str(scaled_intercept))
 
         
+        for i in range(parab.start, parab.intercept):
+            ballX = scaled_x_vals[i] - 9
+            ballZ = scaled_z_vals[i]
 
-#         for i in range(parab.start, parab.intercept):
-#             ballX = scaled_x_vals[i] - 9
-#             ballZ = scaled_y_vals[i]
 
+            update_3D_render(ballX, ballY, ballZ)
+            pygame.time.wait(wait_per_ball_move)
 
-#             update_3D_render(ballX, ballY, ballZ)
-#             pygame.time.wait(wait_per_ball_move)
+            for event in pygame.event.get():
 
-#             for event in pygame.event.get():
-
-#                 if event.type == pygame.QUIT:
-#                     pygame.quit
-#                     quit()
+                if event.type == pygame.QUIT:
+                    pygame.quit
+                    quit()
         
         
 
