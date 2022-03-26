@@ -98,6 +98,7 @@ new_frame_time = 0
 ballLocations1 = []
 locCount1 = 0
 bounceLocs = []
+turns = []
 bounces_on_current_side = 0
 has_moved_above_line = True
 
@@ -277,6 +278,46 @@ def update_3D_render(ballX, ballY, ballZ):
 
     pygame.display.flip()
 
+def point_ended():
+    #CURVE CALCULATION
+    curves = []
+
+    if(len(bounceLocs) >= 1):
+
+        try:
+            pre_bounce_points = ballLocations1[0 : bounceLocs[0].index]
+            cstart = getCurve(pre_bounce_points)
+            if(cstart != None):
+                curves.append(cstart)
+        except:
+            pass
+
+    
+        for i in range(len(bounceLocs) - 1):
+            try:
+                start_point  = bounceLocs[i].index
+                end_point = bounceLocs[i + 1].index
+                cmid = getCurve(ballLocations1[start_point : end_point])
+                if(cmid != None):
+                    curves.append(cmid)
+            except:
+                pass
+
+        
+        try:
+            post_bounce_points = ballLocations1[bounceLocs[-1].index : len(ballLocations1)]
+            cfinal = getCurve(post_bounce_points)
+
+            if(cfinal != None):
+                curves.append(cfinal)
+        except:
+            pass
+
+    
+    turns.append(turn(curves, bounceLocs, ballLocations1))
+    bounceLocs.clear()
+    ballLocations1.clear()
+
 while True:
     success, img = capture.read()
     img = cv2.flip(img, 1)
@@ -363,6 +404,8 @@ while True:
                     right_score += 1
                 else:
                     left_score += 1
+                
+                point_ended()
                 beep.play()
                 bounces_on_current_side = 0
                 first_of_turn = True
@@ -397,7 +440,7 @@ while True:
                     else:
                         right_score += 1
                     
-
+                point_ended()
                 beep.play()
                 bounces_on_current_side = 0
                 first_of_turn = True
@@ -419,62 +462,26 @@ while True:
         capture.release()
         cv2.destroyAllWindows()
         break
-    
-
-#CURVE CALCULATION
-curves = []
-
-if(len(bounceLocs) >= 1):
-
-    try:
-        pre_bounce_points = ballLocations1[0 : bounceLocs[0].index]
-        cstart = getCurve(pre_bounce_points)
-        if(cstart != None):
-            curves.append(cstart)
-    except:
-        print("1 failed")
-        pass
-
-   
-    for i in range(len(bounceLocs) - 1):
-        try:
-            start_point  = bounceLocs[i].index
-            end_point = bounceLocs[i + 1].index
-            cmid = getCurve(ballLocations1[start_point : end_point])
-            if(cmid != None):
-                curves.append(cmid)
-        except:
-            pass
-
-    
-    try:
-        post_bounce_points = ballLocations1[bounceLocs[-1].index : len(ballLocations1)]
-        cfinal = getCurve(post_bounce_points)
-
-        if(cfinal != None):
-            curves.append(cfinal)
-    except:
-        print("3 failed")
-        pass
 
 
 #SHOW CURVE ON GRAPH
-for parab in curves:
-    x_vals = np.arange(0, width, 1)
-    y_vals = quadratic(x_vals, parab.a, parab.b, parab.c)
-    plt.plot(x_vals, y_vals, 'b')
-    plt.ylim(ymin=invert_y(tableLoc), ymax=height)
+# curves = turns[-1].curves
+# for parab in curves:
+#     x_vals = np.arange(0, width, 1)
+#     y_vals = quadratic(x_vals, parab.a, parab.b, parab.c)
+#     plt.plot(x_vals, y_vals, 'b')
+#     plt.ylim(ymin=invert_y(tableLoc), ymax=height)
 
-x_points = []
-y_points = []
+# x_points = []
+# y_points = []
 
-for loc in ballLocations1:
-    x_points.append(loc.x)
-    y_points.append(invert_y(loc.y))
+# for loc in ballLocations1:
+#     x_points.append(loc.x)
+#     y_points.append(invert_y(loc.y))
 
-plt.plot(x_points, y_points, 'ok')
-plt.vlines(x=netLoc, ymin=0, ymax=height, color='r', linestyle='-')
-plt.show()
+# plt.plot(x_points, y_points, 'ok')
+# plt.vlines(x=netLoc, ymin=0, ymax=height, color='r', linestyle='-')
+# plt.show()
 
 #3D TABLE
 pygame.init()
@@ -485,7 +492,7 @@ gluPerspective(35, (16 / 9), 0.1, 60.0)
 glTranslatef(0.0, 0.0, -30)
 
 glRotatef(-70, 1, 0, 0)
-glRotatef(-45, 0, 0, 1)
+# glRotatef(-45, 0, 0, 1)
 
 ballX = 0
 ballY = 0
@@ -495,7 +502,7 @@ real_table_height = invert_y(tableLoc)
 
 while True:
 
-    for parab in curves:
+    for parab in turns[-1].curves:
         x_vals = np.arange(0, width, 1)
         z_vals = quadratic(x_vals, parab.a, parab.b, parab.c)
         scaled_x_vals = (x_vals * 9.0) / float(width / 2)
@@ -504,10 +511,9 @@ while True:
 
         #t = parab.time_span
         #wait_per_ball_move = int(t / len(scaled_x_vals))
-        wait_per_ball_move = 5
+        wait_per_ball_move = 2
 
-        scaled_intercept = int(((parab.intercept * 9.0) / float(width)) - 4.5)
-        #print("scaled intercept: " + str(scaled_intercept))
+        scaled_intercept = int((parab.intercept * 9.0) / float(width / 2))
 
         
         for i in range(parab.start, parab.intercept):
