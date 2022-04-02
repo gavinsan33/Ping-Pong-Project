@@ -149,8 +149,15 @@ def getCurve(points, is_last):
     table_intercept = x[-1]
 
     delta_time = points[-1].time - points[0].time
-
-    return curve(a, b, c, x[0], table_intercept, delta_time, is_last)
+    
+    direction = "ERROR"
+    
+    if(points[0].x < points[-1].x):
+        direction = "Right"
+    else:
+        direction = "Left"
+    
+    return curve(a, b, c, x[0], table_intercept, delta_time, is_last, direction)
 
 def Cube(len, width, height, pos, color, outline):
 
@@ -248,7 +255,7 @@ def Circle(radius, resolution, pos, color, outline):
     glEnd()
 
 def update_3D_render(ballX, ballY, ballZ):
-    glRotatef(0.05, 0, 0, 1)
+    # glRotatef(0.05, 0, 0, 1)
     glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
     
     #FLOOR
@@ -412,6 +419,7 @@ while True:
                 beep.play()
                 bounces_on_current_side = 0
                 first_of_turn = True
+                locCount1 = 0
                 time.sleep(3)
 
             #cv2.putText(img, f"X: {x} Y: {y} radius: {r}", (7, 70), cv2.FONT_HERSHEY_PLAIN, 2, (0, 0, 255), 3)
@@ -447,6 +455,7 @@ while True:
                 beep.play()
                 bounces_on_current_side = 0
                 first_of_turn = True
+                locCount1 = 0
                 time.sleep(3)
 
 
@@ -503,57 +512,49 @@ ballZ = 99
 
 real_table_height = invert_y(tableLoc)
 
-prev_finish = 0
+for parab in turns[-1].curves:
+    x_vals = np.arange(0, width + width, 1)
+    z_vals = quadratic(x_vals, parab.a, parab.b, parab.c)
+    scaled_x_vals = (x_vals * 9.0) / float(width / 2)
+    scaled_z_vals = (z_vals * 3.0) / float(real_table_height)
 
-while True:
 
-    for parab in turns[-1].curves:
-        x_vals = np.arange(0, width + width, 1)
-        z_vals = quadratic(x_vals, parab.a, parab.b, parab.c)
-        scaled_x_vals = (x_vals * 9.0) / float(width / 2)
-        scaled_z_vals = (z_vals * 3.0) / float(real_table_height)
+    t = parab.time_span
+    wait_per_ball_move = t / len(scaled_x_vals)
+
+    scaled_intercept = int((parab.intercept * 9.0) / float(width / 2))
     
+    end = parab.intercept
 
-        #t = parab.time_span
-        #wait_per_ball_move = int(t / len(scaled_x_vals))
-        wait_per_ball_move = 1
+    if(parab.is_last):
+        end = len(scaled_x_vals)
 
-        scaled_intercept = int((parab.intercept * 9.0) / float(width / 2))
-        
-        offset = scaled_x_vals[0] - prev_finish
-        
-        end = parab.intercept
-
-        if(parab.is_last):
-            end = len(scaled_x_vals)
-
-        for i in range(int(parab.start - offset), end):
+    if(parab.direction == "Right"):
+        for i in range(int(parab.start), end):
             ballX = scaled_x_vals[i] - 9
             ballZ = scaled_z_vals[i]
 
             update_3D_render(ballX, ballY, ballZ)
-            pygame.time.wait(wait_per_ball_move)
+            time.sleep(wait_per_ball_move)
 
             for event in pygame.event.get():
 
                 if event.type == pygame.QUIT:
                     pygame.quit
                     quit()
-        
-        prev_finish = scaled_x_vals[-1]
+    elif(parab.direction == "Left"):
+        for i in range(int(parab.start), end, -1):
+            ballX = scaled_x_vals[i] - 9
+            ballZ = scaled_z_vals[i]
 
-        
-            
+            update_3D_render(ballX, ballY, ballZ)
+            time.sleep(wait_per_ball_move)
 
+            for event in pygame.event.get():
 
-        
+                if event.type == pygame.QUIT:
+                    pygame.quit
+                    quit()
 
-
-    
-
-
-
-    
-
-
-
+pygame.quit()
+quit()
