@@ -86,9 +86,9 @@ elif(BALL_COLOR == "PINK"):
     cv2.createTrackbar('G2', 'sliders', 238, 255, nothing)
     cv2.createTrackbar('B2', 'sliders', 248, 255, nothing)
 
-cv2.createTrackbar('Table', 'sliders', 194, width, nothing)
+cv2.createTrackbar('Table', 'sliders', 152, width, nothing)
 
-cv2.createTrackbar('Net', 'sliders', 289, width, nothing)
+cv2.createTrackbar('Net', 'sliders', 310, width, nothing)
 
 cv2.createTrackbar('Ignore', 'sliders', 230, width, nothing )
 
@@ -118,7 +118,7 @@ def quadratic(x, a, b, c):
     y = a * (x - b) * (x - b) + c
     return y
     
-def getCurve(points):
+def getCurve(points, is_last):
 
     x = []
     y = []    
@@ -150,7 +150,7 @@ def getCurve(points):
 
     delta_time = points[-1].time - points[0].time
 
-    return curve(a, b, c, x[0], table_intercept, delta_time)
+    return curve(a, b, c, x[0], table_intercept, delta_time, is_last)
 
 def Cube(len, width, height, pos, color, outline):
 
@@ -248,7 +248,7 @@ def Circle(radius, resolution, pos, color, outline):
     glEnd()
 
 def update_3D_render(ballX, ballY, ballZ):
-    #glRotatef(0.25, 0, 0, 1)
+    glRotatef(0.05, 0, 0, 1)
     glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
     
     #FLOOR
@@ -278,7 +278,7 @@ def update_3D_render(ballX, ballY, ballZ):
 
     pygame.display.flip()
 
-def point_ended():
+def point_ended(double_bounce):
     #CURVE CALCULATION
     curves = []
 
@@ -286,7 +286,7 @@ def point_ended():
 
         try:
             pre_bounce_points = ballLocations1[0 : bounceLocs[0].index]
-            cstart = getCurve(pre_bounce_points)
+            cstart = getCurve(pre_bounce_points, False)
             if(cstart != None):
                 curves.append(cstart)
         except:
@@ -297,7 +297,7 @@ def point_ended():
             try:
                 start_point  = bounceLocs[i].index
                 end_point = bounceLocs[i + 1].index
-                cmid = getCurve(ballLocations1[start_point : end_point])
+                cmid = getCurve(ballLocations1[start_point : end_point], False)
                 if(cmid != None):
                     curves.append(cmid)
             except:
@@ -306,7 +306,10 @@ def point_ended():
         
         try:
             post_bounce_points = ballLocations1[bounceLocs[-1].index : len(ballLocations1)]
-            cfinal = getCurve(post_bounce_points)
+            if(double_bounce):
+                cfinal = getCurve(post_bounce_points, False)
+            else:
+               cfinal = getCurve(post_bounce_points, True) 
 
             if(cfinal != None):
                 curves.append(cfinal)
@@ -405,7 +408,7 @@ while True:
                 else:
                     left_score += 1
                 
-                point_ended()
+                point_ended(True)
                 beep.play()
                 bounces_on_current_side = 0
                 first_of_turn = True
@@ -440,7 +443,7 @@ while True:
                     else:
                         right_score += 1
                     
-                point_ended()
+                point_ended(False)
                 beep.play()
                 bounces_on_current_side = 0
                 first_of_turn = True
@@ -492,34 +495,41 @@ gluPerspective(35, (16 / 9), 0.1, 60.0)
 glTranslatef(0.0, 0.0, -30)
 
 glRotatef(-70, 1, 0, 0)
-# glRotatef(-45, 0, 0, 1)
+glRotatef(-45, 0, 0, 1)
 
-ballX = 0
+ballX = 99
 ballY = 0
-ballZ = 0
+ballZ = 99
 
 real_table_height = invert_y(tableLoc)
+
+prev_finish = 0
 
 while True:
 
     for parab in turns[-1].curves:
-        x_vals = np.arange(0, width, 1)
+        x_vals = np.arange(0, width + width, 1)
         z_vals = quadratic(x_vals, parab.a, parab.b, parab.c)
         scaled_x_vals = (x_vals * 9.0) / float(width / 2)
-        scaled_z_vals = (z_vals * 3.0) / float(tableLoc)
+        scaled_z_vals = (z_vals * 3.0) / float(real_table_height)
     
 
         #t = parab.time_span
         #wait_per_ball_move = int(t / len(scaled_x_vals))
-        wait_per_ball_move = 2
+        wait_per_ball_move = 1
 
         scaled_intercept = int((parab.intercept * 9.0) / float(width / 2))
-
         
-        for i in range(parab.start, parab.intercept):
+        offset = scaled_x_vals[0] - prev_finish
+        
+        end = parab.intercept
+
+        if(parab.is_last):
+            end = len(scaled_x_vals)
+
+        for i in range(int(parab.start - offset), end):
             ballX = scaled_x_vals[i] - 9
             ballZ = scaled_z_vals[i]
-
 
             update_3D_render(ballX, ballY, ballZ)
             pygame.time.wait(wait_per_ball_move)
@@ -530,6 +540,12 @@ while True:
                     pygame.quit
                     quit()
         
+        prev_finish = scaled_x_vals[-1]
+
+        
+            
+
+
         
 
 
