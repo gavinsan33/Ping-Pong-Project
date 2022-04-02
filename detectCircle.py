@@ -107,6 +107,8 @@ right_score = 0
 
 first_of_turn = True
 
+bounces_3d = []
+
 mixer.init()
 beep = pygame.mixer.Sound('./beep.ogg')
 boing = pygame.mixer.Sound("./boing.ogg")
@@ -246,9 +248,9 @@ def Circle(radius, resolution, pos, color, outline):
 
 
     glBegin(GL_TRIANGLES)
-    glColor3fv(color)
 
     for s in surfaces[1:]:
+        glColor3fv(color)
         for vertex in s:
             glVertex3fv(verticies[vertex])
     
@@ -275,13 +277,21 @@ def update_3D_render(ballX, ballY, ballZ):
 
     #NET
     Cube(0.1, 5, 0.5, (0, 0, 3), (.44, .43, .40), True)
-
+   
     #BALL
     glPushMatrix()
     quad = gluNewQuadric()
     glTranslate(ballX, ballY, ballZ)
     ball = gluSphere(quad, 0.25, 50, 50)
     glPopMatrix()
+
+    #BOUNCE SPOTS
+    for pos in bounces_3d:
+        x, y, z = pos
+        
+        Circle(0.4, 50, (x, y, 2.25), (0, 0, 0), False)
+    
+
 
     pygame.display.flip()
 
@@ -504,7 +514,7 @@ gluPerspective(35, (16 / 9), 0.1, 60.0)
 glTranslatef(0.0, 0.0, -30)
 
 glRotatef(-70, 1, 0, 0)
-glRotatef(-45, 0, 0, 1)
+glRotatef(0, 0, 0, 1)
 
 ballX = 99
 ballY = 0
@@ -555,6 +565,8 @@ for parab in turns[-1].curves:
                 if event.type == pygame.QUIT:
                     pygame.quit
                     quit()
+
+    bounces_3d.append((ballX, ballY, ballZ))
 
 pygame.quit()
 quit()
