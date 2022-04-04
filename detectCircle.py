@@ -1,3 +1,4 @@
+from math import sqrt
 from ntpath import join
 import cv2
 from cv2 import getTrackbarPos
@@ -76,9 +77,9 @@ elif(BALL_COLOR == "GREEN"):
     cv2.createTrackbar('B2', 'sliders', 245, 255, nothing)
 elif(BALL_COLOR == "PINK"):
     cv2.createTrackbar('param1', 'sliders', 27, 200, nothing)
-    cv2.createTrackbar('param2', 'sliders', 3, 200, nothing)
+    cv2.createTrackbar('param2', 'sliders', 1, 200, nothing)
     cv2.createTrackbar('min radius', 'sliders', 1, 200, nothing)
-    cv2.createTrackbar('max radius', 'sliders', 40, 500, nothing)
+    cv2.createTrackbar('max radius', 'sliders', 50, 500, nothing)
     cv2.createTrackbar('R1', 'sliders', 125, 255, nothing)
     cv2.createTrackbar('G1', 'sliders', 106, 255, nothing)
     cv2.createTrackbar('B1', 'sliders', 130, 255, nothing)
@@ -86,11 +87,11 @@ elif(BALL_COLOR == "PINK"):
     cv2.createTrackbar('G2', 'sliders', 238, 255, nothing)
     cv2.createTrackbar('B2', 'sliders', 248, 255, nothing)
 
-cv2.createTrackbar('Table', 'sliders', 152, width, nothing)
+cv2.createTrackbar('Table', 'sliders', 193, width, nothing)
 
 cv2.createTrackbar('Net', 'sliders', 310, width, nothing)
 
-cv2.createTrackbar('Ignore', 'sliders', 230, width, nothing )
+cv2.createTrackbar('Ignore', 'sliders', 260, width, nothing )
 
 prev_frame_time = 0
 new_frame_time = 0
@@ -119,6 +120,13 @@ def invert_y(y):
 def quadratic(x, a, b, c):
     y = a * (x - b) * (x - b) + c
     return y
+
+def solve_quadratic(y, a, b, c, direction):
+    if(direction == "Right"):
+        return int(sqrt((y - c) / a) + b)
+    
+    return int(-sqrt((y - c) / a) + b)
+    
     
 def getCurve(points, is_last):
 
@@ -148,8 +156,6 @@ def getCurve(points, is_last):
     b = popt[1]
     c = popt[2]
 
-    table_intercept = x[-1]
-
     delta_time = points[-1].time - points[0].time
     
     direction = "ERROR"
@@ -158,6 +164,8 @@ def getCurve(points, is_last):
         direction = "Right"
     else:
         direction = "Left"
+
+    table_intercept = solve_quadratic(invert_y(tableLoc), a, b, c, direction)
     
     return curve(a, b, c, x[0], table_intercept, delta_time, is_last, direction)
 
@@ -256,7 +264,31 @@ def Circle(radius, resolution, pos, color, outline):
     
     glEnd()
 
-def update_3D_render(ballX, ballY, ballZ):
+def draw_path(points):
+    vert_list = tuple(points)
+    temp  = []
+    
+    for i in range(len(vert_list) - 1):
+        temp.append((i, i + 1))
+    
+    edges = tuple(temp)
+
+    
+    glLineWidth(4)
+
+    glBegin(GL_LINES)
+    
+    for edge in edges:
+        for vertex in edge:
+            glColor3fv((1, 0, 0))
+            glVertex3fv(vert_list[vertex])
+            
+
+    glEnd()
+    
+
+def update_3D_render(ballX, ballY, ballZ, path_points):
+    glLineWidth(1)
     # glRotatef(0.05, 0, 0, 1)
     glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
     
@@ -289,10 +321,10 @@ def update_3D_render(ballX, ballY, ballZ):
     for pos in bounces_3d:
         x, y, z = pos
         
-        Circle(0.4, 50, (x, y, 2.25), (0, 0, 0), False)
+        Circle(0.4, 50, (x, y, 2.25), (0.2, 0.2, 0.2), False)
     
-
-
+    draw_path(path_points)
+    
     pygame.display.flip()
 
 def point_ended(double_bounce):
@@ -310,7 +342,7 @@ def point_ended(double_bounce):
             pass
 
     
-        for i in range(len(bounceLocs) - 1):
+        for i in range(len(bounceLocs)):
             try:
                 start_point  = bounceLocs[i].index
                 end_point = bounceLocs[i + 1].index
@@ -407,7 +439,7 @@ while True:
                 if(ballLocations1[-2].side != ballLocations1[-1].side):
                     bounces_on_current_side = 0
                 
-            if(y >= (tableLoc - 10) and has_moved_above_line):
+            if(y >= (tableLoc) and has_moved_above_line):
                 if(bounces_on_current_side < 2):
                     bounceLocs.append(loc)
                     first_of_turn = False
@@ -416,7 +448,7 @@ while True:
                     bounces_on_current_side += 1
                 
         
-            if(y < (tableLoc - 10)):
+            if(y < (tableLoc)):
                 has_moved_above_line = True
             
             if(bounces_on_current_side == 2):
@@ -425,7 +457,8 @@ while True:
                 else:
                     left_score += 1
                 
-                point_ended(True)
+                bounceLocs.append(loc)
+                point_ended(False)
                 beep.play()
                 bounces_on_current_side = 0
                 first_of_turn = True
@@ -461,7 +494,7 @@ while True:
                     else:
                         right_score += 1
                     
-                point_ended(False)
+                point_ended(True)
                 beep.play()
                 bounces_on_current_side = 0
                 first_of_turn = True
@@ -522,17 +555,22 @@ ballZ = 99
 
 real_table_height = invert_y(tableLoc)
 
+points = []
+
+prev_end = 0
+
 for parab in turns[-1].curves:
-    x_vals = np.arange(0, width + width, 1)
+    x_vals = np.arange(0, width * 2, 1)
     z_vals = quadratic(x_vals, parab.a, parab.b, parab.c)
-    scaled_x_vals = (x_vals * 9.0) / float(width / 2)
+    scaled_x_vals = (x_vals * 18.0) / float(width)
     scaled_z_vals = (z_vals * 3.0) / float(real_table_height)
 
+    coefficient = 5
 
     t = parab.time_span
-    wait_per_ball_move = t / len(scaled_x_vals)
+    wait_per_ball_move = t / (len(scaled_x_vals) / coefficient)
 
-    scaled_intercept = int((parab.intercept * 9.0) / float(width / 2))
+    scaled_intercept = int((parab.intercept * 18.0) / float(width)) - 9
     
     end = parab.intercept
 
@@ -540,25 +578,34 @@ for parab in turns[-1].curves:
         end = len(scaled_x_vals)
 
     if(parab.direction == "Right"):
-        for i in range(int(parab.start), end):
+        for i in range(prev_end, end, coefficient):
             ballX = scaled_x_vals[i] - 9
             ballZ = scaled_z_vals[i]
+            points.append((ballX, 0, ballZ))
 
-            update_3D_render(ballX, ballY, ballZ)
+            update_3D_render(ballX, ballY, ballZ, points)
             time.sleep(wait_per_ball_move)
+
+            if(len(points) % 100 == 0):
+                points.pop(0)
 
             for event in pygame.event.get():
 
                 if event.type == pygame.QUIT:
                     pygame.quit
                     quit()
+    
     elif(parab.direction == "Left"):
-        for i in range(int(parab.start), end, -1):
+        for i in range(prev_end, end, -coefficient):
             ballX = scaled_x_vals[i] - 9
             ballZ = scaled_z_vals[i]
+            points.append((ballX, 0, ballZ))
 
-            update_3D_render(ballX, ballY, ballZ)
+            update_3D_render(ballX, ballY, ballZ, points)
             time.sleep(wait_per_ball_move)
+
+            if(len(points) % 100 == 0):
+                points.pop(0)
 
             for event in pygame.event.get():
 
@@ -566,7 +613,9 @@ for parab in turns[-1].curves:
                     pygame.quit
                     quit()
 
-    bounces_3d.append((ballX, ballY, ballZ))
+    bounces_3d.append((ballX, ballY, 2.25))
+    prev_end = parab.intercept
 
+time.sleep(2)
 pygame.quit()
 quit()
