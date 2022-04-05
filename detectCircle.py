@@ -23,7 +23,7 @@ from turn import turn
 #capture = cv2.VideoCapture("./pingpong.mp4")
 capture = cv2.VideoCapture(0, cv2.CAP_DSHOW)
 
-width = 768
+width = 640
 height = 480
 
 #RESIZES LIVE CAMERA FEED
@@ -458,6 +458,7 @@ while True:
                     left_score += 1
                 
                 bounceLocs.append(loc)
+                print(bounceLocs[-1].x)
                 point_ended(False)
                 beep.play()
                 bounces_on_current_side = 0
@@ -520,23 +521,23 @@ while True:
 
 
 #SHOW CURVE ON GRAPH
-# curves = turns[-1].curves
-# for parab in curves:
-#     x_vals = np.arange(0, width, 1)
-#     y_vals = quadratic(x_vals, parab.a, parab.b, parab.c)
-#     plt.plot(x_vals, y_vals, 'b')
-#     plt.ylim(ymin=invert_y(tableLoc), ymax=height)
+curves = turns[-1].curves
+for parab in curves:
+    x_vals = np.arange(0, width, 1)
+    y_vals = quadratic(x_vals, parab.a, parab.b, parab.c)
+    plt.plot(x_vals, y_vals, 'b')
+    plt.ylim(ymin=invert_y(tableLoc), ymax=height)
 
-# x_points = []
-# y_points = []
+x_points = []
+y_points = []
 
-# for loc in ballLocations1:
-#     x_points.append(loc.x)
-#     y_points.append(invert_y(loc.y))
+for loc in ballLocations1:
+    x_points.append(loc.x)
+    y_points.append(invert_y(loc.y))
 
-# plt.plot(x_points, y_points, 'ok')
-# plt.vlines(x=netLoc, ymin=0, ymax=height, color='r', linestyle='-')
-# plt.show()
+plt.plot(x_points, y_points, 'ok')
+plt.vlines(x=netLoc, ymin=0, ymax=height, color='r', linestyle='-')
+plt.show()
 
 #3D TABLE
 pygame.init()
