@@ -165,14 +165,18 @@ pygame.display.set_mode(display, DOUBLEBUF|OPENGL)
 gluPerspective(35, (16 / 9), 0.1, 60.0)
 glTranslatef(0.0, 0.0, -30)
 
-glRotatef(-70, 1, 0, 0)
-glRotatef(-45, 0, 0, 1)
+VERTICAL_ROTATION = -65
+HORIZONTAL_ROTATION = -30
+
+glRotatef(VERTICAL_ROTATION, 1, 0, 0)
+glRotatef(HORIZONTAL_ROTATION, 0, 0, 1)
 
 x = -5.0
 y = -2.0
 
-
-
+NUM_FRAMES = 300
+per_frame_vertical = -float(VERTICAL_ROTATION) / NUM_FRAMES
+per_frame_horizontal = -float(HORIZONTAL_ROTATION) / NUM_FRAMES
 
 while True:
     for event in pygame.event.get():
@@ -180,10 +184,10 @@ while True:
         if event.type == pygame.QUIT:
             pygame.quit
             quit()
-    
-    glRotatef(0.25, 0, 0, 1)
+
     glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
-    
+    glRotatef(per_frame_horizontal, 0, 0, 1)
+    # glRotatef(per_frame_vertical, 1, 0, 0)
 
     #FLOOR
     #Cube(20, 20, 0.01, (0, 0, 0), (0, 1, 1), False)

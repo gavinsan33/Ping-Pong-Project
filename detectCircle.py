@@ -110,6 +110,9 @@ first_of_turn = True
 
 bounces_3d = []
 
+VERTICAL_ROTATION = -65
+HORIZONTAL_ROTATION = -30
+
 mixer.init()
 beep = pygame.mixer.Sound('./beep.ogg')
 boing = pygame.mixer.Sound("./boing.ogg")
@@ -126,9 +129,8 @@ def solve_quadratic(y, a, b, c, direction):
         return int(sqrt((y - c) / a) + b)
     
     return int(-sqrt((y - c) / a) + b)
-    
-    
-def getCurve(points, is_last):
+      
+def getCurve(points, off_table):
 
     x = []
     y = []    
@@ -167,7 +169,7 @@ def getCurve(points, is_last):
 
     table_intercept = solve_quadratic(invert_y(tableLoc), a, b, c, direction)
     
-    return curve(a, b, c, x[0], table_intercept, delta_time, is_last, direction)
+    return curve(a, b, c, x[0], table_intercept, delta_time, off_table, direction)
 
 def Cube(len, width, height, pos, color, outline):
 
@@ -273,7 +275,6 @@ def draw_path(points):
     
     edges = tuple(temp)
 
-    
     glLineWidth(4)
 
     glBegin(GL_LINES)
@@ -283,10 +284,8 @@ def draw_path(points):
             glColor3fv((1, 0, 0))
             glVertex3fv(vert_list[vertex])
             
-
     glEnd()
     
-
 def update_3D_render(ballX, ballY, ballZ, path_points):
     glLineWidth(1)
     # glRotatef(0.05, 0, 0, 1)
@@ -321,9 +320,10 @@ def update_3D_render(ballX, ballY, ballZ, path_points):
     for pos in bounces_3d:
         x, y, z = pos
         
-        Circle(0.4, 50, (x, y, 2.25), (0.2, 0.2, 0.2), False)
+        Circle(0.25, 50, (x, y, 2.25), (0.2, 0.2, 0.2), False)
     
-    draw_path(path_points)
+    if(path_points != None):
+        draw_path(path_points)
     
     pygame.display.flip()
 
@@ -369,6 +369,7 @@ def point_ended(double_bounce):
     turns.append(turn(curves, bounceLocs, ballLocations1))
     bounceLocs.clear()
     ballLocations1.clear()
+
 
 while True:
     success, img = capture.read()
@@ -458,8 +459,7 @@ while True:
                     left_score += 1
                 
                 bounceLocs.append(loc)
-                print(bounceLocs[-1].x)
-                point_ended(False)
+                point_ended(True)
                 beep.play()
                 bounces_on_current_side = 0
                 first_of_turn = True
@@ -495,7 +495,7 @@ while True:
                     else:
                         right_score += 1
                     
-                point_ended(True)
+                point_ended(False)
                 beep.play()
                 bounces_on_current_side = 0
                 first_of_turn = True
@@ -528,14 +528,14 @@ for parab in curves:
     plt.plot(x_vals, y_vals, 'b')
     plt.ylim(ymin=invert_y(tableLoc), ymax=height)
 
-x_points = []
-y_points = []
+# x_points = []
+# y_points = []
 
-for loc in ballLocations1:
-    x_points.append(loc.x)
-    y_points.append(invert_y(loc.y))
+# for loc in ballLocations1:
+#     x_points.append(loc.x)
+#     y_points.append(invert_y(loc.y))
 
-plt.plot(x_points, y_points, 'ok')
+# plt.plot(x_points, y_points, 'ok')
 plt.vlines(x=netLoc, ymin=0, ymax=height, color='r', linestyle='-')
 plt.show()
 
@@ -547,8 +547,8 @@ pygame.display.set_mode(display, DOUBLEBUF|OPENGL)
 gluPerspective(35, (16 / 9), 0.1, 60.0)
 glTranslatef(0.0, 0.0, -30)
 
-glRotatef(-70, 1, 0, 0)
-glRotatef(0, 0, 0, 1)
+glRotatef(VERTICAL_ROTATION, 1, 0, 0)
+glRotatef(HORIZONTAL_ROTATION, 0, 0, 1)
 
 ballX = 99
 ballY = 0
@@ -557,11 +557,16 @@ ballZ = 99
 real_table_height = invert_y(tableLoc)
 
 points = []
-
+PATH_LENGTH = 20
 prev_end = 0
 
 for parab in turns[-1].curves:
-    x_vals = np.arange(0, width * 2, 1)
+    end = parab.intercept
+    if(parab.intercept > width):
+        end = width
+
+    x_vals = np.arange(0, width, 1)
+
     z_vals = quadratic(x_vals, parab.a, parab.b, parab.c)
     scaled_x_vals = (x_vals * 18.0) / float(width)
     scaled_z_vals = (z_vals * 3.0) / float(real_table_height)
@@ -572,22 +577,20 @@ for parab in turns[-1].curves:
     wait_per_ball_move = t / (len(scaled_x_vals) / coefficient)
 
     scaled_intercept = int((parab.intercept * 18.0) / float(width)) - 9
-    
-    end = parab.intercept
-
-    if(parab.is_last):
-        end = len(scaled_x_vals)
 
     if(parab.direction == "Right"):
         for i in range(prev_end, end, coefficient):
+            if(i > width):
+                break
+
             ballX = scaled_x_vals[i] - 9
-            ballZ = scaled_z_vals[i]
+            ballZ = scaled_z_vals[i] - 0.7
             points.append((ballX, 0, ballZ))
 
             update_3D_render(ballX, ballY, ballZ, points)
             time.sleep(wait_per_ball_move)
 
-            if(len(points) % 100 == 0):
+            if(len(points) % PATH_LENGTH == 0):
                 points.pop(0)
 
             for event in pygame.event.get():
@@ -597,15 +600,18 @@ for parab in turns[-1].curves:
                     quit()
     
     elif(parab.direction == "Left"):
+        if(prev_end == 0):
+            prev_end = width - 1
+
         for i in range(prev_end, end, -coefficient):
             ballX = scaled_x_vals[i] - 9
-            ballZ = scaled_z_vals[i]
+            ballZ = scaled_z_vals[i] - 0.7
             points.append((ballX, 0, ballZ))
 
             update_3D_render(ballX, ballY, ballZ, points)
             time.sleep(wait_per_ball_move)
 
-            if(len(points) % 100 == 0):
+            if(len(points) % PATH_LENGTH == 0):
                 points.pop(0)
 
             for event in pygame.event.get():
@@ -614,8 +620,22 @@ for parab in turns[-1].curves:
                     pygame.quit
                     quit()
 
-    bounces_3d.append((ballX, ballY, 2.25))
+    bounces_3d.append((ballX, ballY, 2.1))
     prev_end = parab.intercept
+    
+update_3D_render(0, 0, 100, None)
+
+NUM_FRAMES = 150
+per_frame_vertical = -float(VERTICAL_ROTATION) / NUM_FRAMES
+per_frame_horizontal = -float(HORIZONTAL_ROTATION) / NUM_FRAMES
+
+for i in range(NUM_FRAMES):
+    glRotatef(per_frame_horizontal, 0, 0, 1)
+    update_3D_render(0, 0, 100, None)
+
+for i in range(NUM_FRAMES):
+    glRotatef(per_frame_vertical, 1, 0, 0)
+    update_3D_render(0, 0, 100, None)
 
 time.sleep(2)
 pygame.quit()
