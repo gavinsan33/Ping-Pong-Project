@@ -370,6 +370,14 @@ def point_ended(double_bounce):
     bounceLocs.clear()
     ballLocations1.clear()
 
+#TAKEN DIRECTLY FROM STACK OVERFLOW
+def drawText(x, y, text, size):   
+    font = pygame.font.SysFont('freesansbold.tff', size)                                             
+    textSurface = font.render(text, True, (255, 255, 255, 255), (0, 0, 0, 255))
+    textData = pygame.image.tostring(textSurface, "RGBA", True)
+    glWindowPos2d(x, y)
+    glDrawPixels(textSurface.get_width(), textSurface.get_height(), GL_RGBA, GL_UNSIGNED_BYTE, textData)
+
 
 while True:
     success, img = capture.read()
@@ -491,9 +499,9 @@ while True:
                         left_score += 1
                 else:
                     if(bounceLocs[-1].side == "Left"):
-                        left_score += 1
-                    else:
                         right_score += 1
+                    else:
+                        left_score += 1
                     
                 point_ended(False)
                 beep.play()
@@ -521,12 +529,12 @@ while True:
 
 
 #SHOW CURVE ON GRAPH
-curves = turns[-1].curves
-for parab in curves:
-    x_vals = np.arange(0, width, 1)
-    y_vals = quadratic(x_vals, parab.a, parab.b, parab.c)
-    plt.plot(x_vals, y_vals, 'b')
-    plt.ylim(ymin=invert_y(tableLoc), ymax=height)
+# curves = turns[-1].curves
+# for parab in curves:
+#     x_vals = np.arange(0, width, 1)
+#     y_vals = quadratic(x_vals, parab.a, parab.b, parab.c)
+#     plt.plot(x_vals, y_vals, 'b')
+#     plt.ylim(ymin=invert_y(tableLoc), ymax=height)
 
 # x_points = []
 # y_points = []
@@ -536,14 +544,14 @@ for parab in curves:
 #     y_points.append(invert_y(loc.y))
 
 # plt.plot(x_points, y_points, 'ok')
-plt.vlines(x=netLoc, ymin=0, ymax=height, color='r', linestyle='-')
-plt.show()
+# plt.vlines(x=netLoc, ymin=0, ymax=height, color='r', linestyle='-')
+# plt.show()
 
 #3D TABLE
 pygame.init()
 
 display = (800, 600)
-pygame.display.set_mode(display, DOUBLEBUF|OPENGL)
+screen = pygame.display.set_mode(display, DOUBLEBUF|OPENGL)
 gluPerspective(35, (16 / 9), 0.1, 60.0)
 glTranslatef(0.0, 0.0, -30)
 
@@ -557,13 +565,13 @@ ballZ = 99
 real_table_height = invert_y(tableLoc)
 
 points = []
-PATH_LENGTH = 20
+PATH_LENGTH = 80
 prev_end = 0
 
 for parab in turns[-1].curves:
     end = parab.intercept
-    if(parab.intercept > width):
-        end = width
+    if(not parab.off_table and parab.intercept > width):
+        end = width - 1
 
     x_vals = np.arange(0, width, 1)
 
@@ -625,7 +633,7 @@ for parab in turns[-1].curves:
     
 update_3D_render(0, 0, 100, None)
 
-NUM_FRAMES = 150
+NUM_FRAMES = 75
 per_frame_vertical = -float(VERTICAL_ROTATION) / NUM_FRAMES
 per_frame_horizontal = -float(HORIZONTAL_ROTATION) / NUM_FRAMES
 
@@ -637,6 +645,17 @@ for i in range(NUM_FRAMES):
     glRotatef(per_frame_vertical, 1, 0, 0)
     update_3D_render(0, 0, 100, None)
 
-time.sleep(2)
+speed_sum = 0
+tot = 0
+for c in turns[-1].curves:
+    speed_sum += (abs(c.intercept - c.start) / c.time_span)
+    tot += 1
+
+avg_speed = int(((speed_sum / tot) / (width / 9)) * 14.67) / 10.0
+
+drawText(50, 50, f"Average Speed: {avg_speed} mph", 45)
+pygame.display.flip()
+
+time.sleep(5)
 pygame.quit()
 quit()
