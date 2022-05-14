@@ -7,3 +7,6 @@ class ballLoc:
         self.time = time
         self.side = side
         self.index = index
+
+        self.depth = None
+    

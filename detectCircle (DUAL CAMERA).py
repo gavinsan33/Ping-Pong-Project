@@ -22,6 +22,7 @@ from turn import turn
 
 #capture = cv2.VideoCapture("./pingpong.mp4")
 capture = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+capture2 = cv2.VideoCapture(2, cv2.CAP_DSHOW)
 
 width = 640
 height = 480
@@ -29,15 +30,17 @@ height = 480
 #RESIZES LIVE CAMERA FEED
 capture.set(3, width)
 capture.set(4, height)
+capture2.set(3, width)
+capture2.set(4, height)
 
 assert capture.isOpened()
+assert capture2.isOpened()
 
 #NEEDED FOR SLIDERS TO WORK
 def nothing(a):
     pass
 
 BALL_COLOR = "PINK"
-DISPLAY_FPS = False
 
 cv2.namedWindow('sliders', cv2.WINDOW_NORMAL)
 
@@ -96,7 +99,10 @@ prev_frame_time = 0
 new_frame_time = 0
 
 ballLocations1 = []
-locCount1 = 0
+ballLocations2 = []
+
+locCount = 0
+
 bounceLocs = []
 turns = []
 bounces_on_current_side = 0
@@ -111,9 +117,6 @@ bounces_3d = []
 
 VERTICAL_ROTATION = -65
 HORIZONTAL_ROTATION = -30
-
-frame_sum = 0
-frame_count = 0
 
 mixer.init()
 beep = pygame.mixer.Sound('./beep.ogg')
@@ -403,9 +406,13 @@ def getCircle(img):
     return circles
 
 counter = 0
+frame_sum = 0
+frame_count = 0
+
 while True:
     success, img = capture.read()
     img = cv2.flip(img, 1)
+
 
     # #IF USING PRE-RECORDED VIDEO#
     # percent = 50
@@ -418,6 +425,7 @@ while True:
     # #############################
     
     circles = getCircle(img)
+    img2 = None
 
     tableLoc = cv2.getTrackbarPos('Table', 'sliders')
     netLoc = cv2.getTrackbarPos('Net', 'sliders')
@@ -427,9 +435,9 @@ while True:
     cv2.line(img, (netLoc, 0), (netLoc, width), (0, 0, 255), 3)
     cv2.line(img, (0, ignore_line), (width, ignore_line), (0, 100, 0), 3)
 
+
     if circles is not None:
         for i in circles[0]:
-            
             x = int(i[0])
             y = int(i[1])
             r = int(i[2])
@@ -444,9 +452,46 @@ while True:
             else:
                 side = "Right"
 
-            loc = ballLoc(x, y, r, time.time(), side, locCount1)
+            loc = ballLoc(x, y, r, time.time(), side, locCount)
             ballLocations1.append(loc)
-            locCount1 += 1
+            locCount += 1
+
+            circles2 = None
+            
+            if(counter % 2 == 0):
+                _, img2 = capture2.read()
+                img2 = cv2.flip(img2, 1)
+                
+                circles2 = getCircle(img2)
+
+                if circles2 is not None:
+                    for i in circles2[0]:
+                        
+                        x2 = int(i[0])
+                        y2 = int(i[1])
+                        r2 = int(i[2])
+
+                        cv2.line(img2, (x2, 0), (x2, width), (255, 0, 0), 3)
+                        cv2.line(img2, (0, y2), (width, y2), (255, 0, 0), 3)
+                        cv2.circle(img2, (x2, y2), int(r2), (0, 0, 255), 2)
+                        cv2.circle(img2, (x2, y2), 2, (0, 0, 255), 3)
+
+                        loc2 = ballLoc(x2, y2, r2, time.time(), side, locCount)
+                        ballLocations2.append(loc2)
+                else:
+                    ballLocations2.append(None)
+
+            #draw Y Line
+            cv2.line(img, (x, 0), (x, width), (255, 0, 0), 3)
+
+            #draw X Line
+            cv2.line(img, (0, y), (width, y), (255, 0, 0), 3)
+
+            # draw the outer circle
+            cv2.circle(img, (x, y), int(r), (0, 0, 255), 2)
+            
+            # draw the center of the circle
+            cv2.circle(img, (x, y), 2, (0, 0, 255), 3)
             
             if(len(ballLocations1) >= 2):
                 if(ballLocations1[-2].side != ballLocations1[-1].side):
@@ -475,23 +520,11 @@ while True:
                 beep.play()
                 bounces_on_current_side = 0
                 first_of_turn = True
-                locCount1 = 0
+                locCount = 0
                 time.sleep(3)
 
             #cv2.putText(img, f"X: {x} Y: {y} radius: {r}", (7, 70), cv2.FONT_HERSHEY_PLAIN, 2, (0, 0, 255), 3)
 
-            #draw Y Line
-            cv2.line(img, (x, 0), (x, width), (255, 0, 0), 3)
-
-            #draw X Line
-            cv2.line(img, (0, y), (width, y), (255, 0, 0), 3)
-
-            # draw the outer circle
-            cv2.circle(img, (x, y), int(i[2]), (0, 0, 255), 2)
-            
-            # draw the center of the circle
-            cv2.circle(img, (x, y), 2, (0, 0, 255), 3)
-    
     elif(not first_of_turn):
         if(len(ballLocations1) >= 2):
             
@@ -511,7 +544,7 @@ while True:
                 beep.play()
                 bounces_on_current_side = 0
                 first_of_turn = True
-                locCount1 = 0
+                locCount = 0
                 time.sleep(3)
 
     DISPLAY_FPS = True
@@ -521,7 +554,6 @@ while True:
         prev_frame_time = new_frame_time
         frame_sum += fps
         frame_count += 1
-        
         avg = int(frame_sum / frame_count)
         avg = str(avg)
         cv2.putText(img, avg, (10, 200), cv2.FONT_HERSHEY_PLAIN, 3, (0, 0, 0), 3)
@@ -532,13 +564,15 @@ while True:
 
     
     cv2.putText(img, f"Left Score: {left_score} Right Score: {right_score}", (7, 70), cv2.FONT_HERSHEY_PLAIN, 2, (0, 0, 255), 3)
-    cv2.imshow('Ball Tracker', img)
+    cv2.imshow('Horiz Camera', img)
+    if img2 is not None:
+        cv2.imshow('Vert Camera', img2)
 
     if(cv2.waitKey(1) & 0xFF == ord('q')):
         capture.release()
         cv2.destroyAllWindows()
         break
-
+    
     counter += 1
 
 
