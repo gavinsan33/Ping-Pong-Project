@@ -78,15 +78,15 @@ elif(BALL_COLOR == "PINK"):
     cv2.createTrackbar('param1', 'sliders', 27, 200, nothing)
     cv2.createTrackbar('param2', 'sliders', 1, 200, nothing)
     cv2.createTrackbar('min radius', 'sliders', 1, 200, nothing)
-    cv2.createTrackbar('max radius', 'sliders', 50, 500, nothing)
-    cv2.createTrackbar('R1', 'sliders', 125, 255, nothing)
-    cv2.createTrackbar('G1', 'sliders', 106, 255, nothing)
-    cv2.createTrackbar('B1', 'sliders', 130, 255, nothing)
-    cv2.createTrackbar('R2', 'sliders', 171, 255, nothing)
-    cv2.createTrackbar('G2', 'sliders', 238, 255, nothing)
-    cv2.createTrackbar('B2', 'sliders', 248, 255, nothing)
+    cv2.createTrackbar('max radius', 'sliders', 3, 500, nothing)
+    cv2.createTrackbar('R1', 'sliders', 135, 255, nothing)
+    cv2.createTrackbar('G1', 'sliders', 71, 255, nothing)
+    cv2.createTrackbar('B1', 'sliders', 52, 255, nothing)
+    cv2.createTrackbar('R2', 'sliders', 255, 255, nothing)
+    cv2.createTrackbar('G2', 'sliders', 255, 255, nothing)
+    cv2.createTrackbar('B2', 'sliders', 255, 255, nothing)
 
-cv2.createTrackbar('Table', 'sliders', 193, width, nothing)
+cv2.createTrackbar('Table', 'sliders', 327, width, nothing)
 
 cv2.createTrackbar('Net', 'sliders', 310, width, nothing)
 
@@ -405,7 +405,7 @@ def getCircle(img):
 counter = 0
 while True:
     success, img = capture.read()
-    img = cv2.flip(img, 1)
+    # img = cv2.flip(img, 1)
 
     # #IF USING PRE-RECORDED VIDEO#
     # percent = 50
@@ -514,7 +514,7 @@ while True:
                 locCount1 = 0
                 time.sleep(3)
 
-    DISPLAY_FPS = True
+    DISPLAY_FPS = False
     if(DISPLAY_FPS):
         new_frame_time = time.time()
         fps = int(1 / (new_frame_time - prev_frame_time))
