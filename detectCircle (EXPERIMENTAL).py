@@ -23,6 +23,7 @@ from turn import turn
 from scipy.stats import linregress
 
 #capture = cv2.VideoCapture("./pingpong.mp4")
+print("STARTED")
 capture = cv2.VideoCapture(0, cv2.CAP_DSHOW)
 capture2 = cv2.VideoCapture(1, cv2.CAP_DSHOW)
 
@@ -84,12 +85,12 @@ elif(BALL_COLOR == "PINK"):
     cv2.createTrackbar('param2', 'sliders', 5, 200, nothing)
     cv2.createTrackbar('min radius', 'sliders', 1, 200, nothing)
     cv2.createTrackbar('max radius', 'sliders', 11, 500, nothing)
-    cv2.createTrackbar('R1', 'sliders', 135, 255, nothing)
-    cv2.createTrackbar('G1', 'sliders', 71, 255, nothing)
-    cv2.createTrackbar('B1', 'sliders', 52, 255, nothing)
-    cv2.createTrackbar('R2', 'sliders', 172, 255, nothing)
-    cv2.createTrackbar('G2', 'sliders', 180, 255, nothing)
-    cv2.createTrackbar('B2', 'sliders', 149, 255, nothing)
+    cv2.createTrackbar('R1', 'sliders', 153, 255, nothing)
+    cv2.createTrackbar('G1', 'sliders', 73, 255, nothing)
+    cv2.createTrackbar('B1', 'sliders', 78, 255, nothing)
+    cv2.createTrackbar('R2', 'sliders', 177, 255, nothing)
+    cv2.createTrackbar('G2', 'sliders', 198, 255, nothing)
+    cv2.createTrackbar('B2', 'sliders', 186, 255, nothing)
 
 cv2.createTrackbar('Table', 'sliders', 183, width, nothing)
 cv2.createTrackbar('Net', 'sliders', 335, width, nothing)
@@ -102,7 +103,7 @@ cv2.createTrackbar('Ignore', 'sliders', 218, width, nothing)
 
 cv2.createTrackbar('Vert Start', 'sliders', 327, height, nothing)
 cv2.createTrackbar('Vert End', 'sliders', 20, height, nothing)
-cv2.createTrackbar('ShortL', 'sliders', 79, width, nothing)
+cv2.createTrackbar('ShortL', 'sliders', 64, width, nothing)
 cv2.createTrackbar('ShortR', 'sliders', 580, width, nothing)
 
 prev_frame_time = 0
@@ -146,13 +147,16 @@ def linear(m, x, b):
     return m * x + b
 
 def solve_quadratic(y, a, b, c, direction):
-    if(direction == "Right"):
-        return int(sqrt((y - c) / a) + b)
-    
-    return int(-sqrt((y - c) / a) + b)
+    try:
+        if(direction == "Right"):
+            return int(sqrt((y - c) / a) + b)
+        
+        return int(-sqrt((y - c) / a) + b)
+    except:
+        return None
       
-def getCurve(points, off_table):
-
+def getCurve(points, off_table, air_intercept):
+    
     if(len(points) <= 3):
         return
 
@@ -163,7 +167,18 @@ def getCurve(points, off_table):
         x.append(loc.x)
         y.append(invert_y(loc.y))
 
-    popt, pcov = curve_fit(quadratic, x, y)
+    popt = 0
+    pcov = 0
+
+    new_points = []
+    for i in range(1, len(points) - 1):
+        new_points.append(points[i])
+
+    try:
+        popt, pcov = curve_fit(quadratic, x, y)
+    except:
+        print("Curve calculation failed... using failsafe")
+        return getCurve(new_points, off_table, air_intercept)
 
     ###TAKEN DIRECTLY FROM STACK OVERFLOW###
     #CALCULATES CORRELATION COEFFICIENT
@@ -194,21 +209,31 @@ def getCurve(points, off_table):
     else:
         direction = "Left"
 
-    table_intercept = solve_quadratic(invert_y(tableLoc), a, b, c, direction)
+    table_intercept = air_intercept
+    Ai = True
+
+    if(air_intercept == None):
+        table_intercept = solve_quadratic(invert_y(tableLoc), a, b, c, direction)
+        
+        if(table_intercept == None):
+            table_intercept = points[-1].x
+        Ai = False
+        
     
     line = getLine(points)
 
     delta_time = 2 * (points[-1].time - points[mid].time)
 
     if(a < 0 and r_squared >= 0.3):
-        return curve(a, b, c, x[0], table_intercept, delta_time, off_table, direction, line)
+        return curve(a, b, c, x[0], table_intercept, delta_time, off_table, direction, line, Ai)
     
-    new_points = []
-    for i in range(1, len(points)):
-        new_points.append(points[i])
     
-    print("Curve calculation failed... using failsafe")
-    return getCurve(new_points, off_table)
+    # new_points.append(points[0])
+    # new_points.append(points[int(len(points) / 2)])
+    # new_points.append(points[-1])
+    
+    print("Curve calculation does pass all tests... using failsafe")
+    return getCurve(new_points, off_table, air_intercept)
 
 def getLine(points):
     
@@ -349,7 +374,7 @@ def draw_path(points):
             
     glEnd()
     
-def update_3D_render(ballX, ballY, ballZ, path_points, text):
+def update_3D_render(ballX, ballY, ballZ, path_points, text, percentages):
     glLineWidth(1)
     # glRotatef(0.05, 0, 0, 1)
     glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
@@ -388,8 +413,19 @@ def update_3D_render(ballX, ballY, ballZ, path_points, text):
         draw_path(path_points)
     
     drawText(50, 50, text, 45)
+
+    if(percentages != None):
+        p1, p2, p3, p4 = percentages
+
+        drawText(40, height2 - 240, f"{str(p1)}%", 50)
+        drawText(40, height2 - 380, f"{str(p2)}%", 50)
+        drawText(width2 - 120, height2 - 240, f"{str(p3)}%", 50)
+        drawText(width2 - 120, height2 - 380, f"{str(p4)}%", 50)
+    
+
     drawText(20, height2 - 50, f"Left Score: {str(left_score)}", 50)
     drawText(width2 - 250, height2 - 50, f"Right Score: {str(right_score)}", 50)
+    
     pygame.display.flip()
 
 def point_ended(bound_crossed):
@@ -397,76 +433,112 @@ def point_ended(bound_crossed):
     global has_passed_left_bound
     global has_passed_right_bound
 
+    print("POINT ENDED")
     curves = []
 
     if(len(bounceLocs) >= 1):
 
-        try:
-            pre_bounce_points = ballLocations1[0 : bounceLocs[0].index]
-            cstart = getCurve(pre_bounce_points, False)
-            if(cstart != None):
-                curves.append(cstart)
-        except:
-            pass
 
-        for i in range(len(bounceLocs)):
-            try:
+        pre_bounce_points = ballLocations1[0 : bounceLocs[0].index]
+        cstart = getCurve(pre_bounce_points, False, None)
+        if(cstart != None):
+            curves.append(cstart)
+        
+        print("Serve")
+
+        for i in range(len(bounceLocs) - 1):
+
+            ######## PRE HIT ########
+            if(len(curves) >= 1 and i + 2 < len(bounceLocs) and ((curves[-1].direction == "Right" and curves[-1].intercept > bounceLocs[i + 1].x) or (curves[-1].direction == "Left" and curves[-1].intercept < bounceLocs[i + 1].x))):
+                
+                start_point = bounceLocs[i].index
+                end_point = bounceLocs[i + 1].index
+
+                final_end = 0
+                
+                if(curves[-1].direction == "Right"):
+                    highest_num = 0
+                    highest_index = 0
+                    for q in range(start_point, end_point):
+                        if(ballLocations1[q].x > highest_num):
+                            highest_num = ballLocations1[q].x
+                            highest_index = q
+
+                    final_end = highest_index
+                else:
+                    lowest_num = 99999
+                    lowest_index = 0
+                    for q in range(start_point, end_point):
+                        if(ballLocations1[q].x < lowest_num):
+                            lowest_num = ballLocations1[q].x
+                            lowest_index = q
+                    
+                    final_end = lowest_index
+
+                print("Pre Hit")
+
+                pts = ballLocations1[start_point : final_end]
+                
+                # if(curves[-1].direction == "Right"):
+
+                #     for q in range(final_end, start_point2, -1):
+                #         pts.append(ballLocations1[q])
+
+                cmid2 = getCurve(pts, False, ballLocations1[final_end].x)
+                
+                if(cmid2 != None):
+                    curves.append(cmid2) 
+
+                    ######### POST HIT ##########
+                    if(i + 1 < len(bounceLocs)):
+                        start_point2 = final_end
+                        end_point2 = bounceLocs[i + 1].index
+
+                        pts2 = ballLocations1[start_point : end_point]
+
+                        print(start_point2)
+                        print(end_point2)
+                        print(len(pts2))
+                        print(pts2[0].x)
+                        print(pts2[-1].x)
+                        
+                        # if(curves[-1].direction == "Right"):
+
+                        #     for q in range(final_end, start_point2, -1):
+                        #         pts.append(ballLocations1[q])
+
+                        print("Post Hit")
+
+                        post_hit_curve = getCurve(pts2, False, None)
+                        if(post_hit_curve != None):
+                            curves.append(post_hit_curve)
+
+                
+            ######## REGULAR BOUNCE ########
+            else:
                 start_point  = bounceLocs[i].index
                 end_point = bounceLocs[i + 1].index
-                cmid = getCurve(ballLocations1[start_point : end_point], False)
+                cmid = getCurve(ballLocations1[start_point : end_point], False, None)
                 if(cmid != None):
                     curves.append(cmid)
-                
-                # if(i + 2 < len(bounceLocs)):
-                #     if((cmid.direction == "Right" and bounceLocs[i + 2].x < cmid.intercept) or (cmid.direction == "Left" and bounceLocs[i + 2].x > cmid.intercept)):
-                #         try:
-                #             start_point2 = bounceLocs[i + 1].index
-                #             end_point2 = bounceLocs[i + 2].index
-                            
-                #             if(cmid.direction == "Right"):
-                #                 highest = 0
-                #                 for q in range(start_point2, end_point2):
-                #                     if(ballLocations1[q].x > highest):
-                #                         highest = q
+                    print("Normal bounce")
 
-                #                 end_point2 = highest
-                #             else:
-                #                 lowest = 0
-                #                 for q in range(start_point2, end_point2, -1):
-                #                     if(ballLocations1[q].x < lowest):
-                #                         lowest = q
-                                    
-                #                 end_point2 = lowest
-
-                            
-                #             pts = ballLocations1[start_point2 : end_point2]
-                #             if(cmid.direction == "Left"):
-                #                 pts = ballLocations1[end_point2: start_point2]
-
-                #             cmid2 = getCurve(pts, False)
-                #             if(cmid2 != None):
-                #                 curves.append(cmid2)
-                #         except:
-                #             pass
-            except:
-                pass
-
+        
+        ######## OFF TABLE BOUNCE ########
         if(bound_crossed != ""):
-            try:
-                end_points = ballLocations1[bounceLocs[-1].index : len(ballLocations1)]
-                cend = getCurve(end_points, True)
-                if(cend != None):
-                    curves.append(cend)
-            except:
-                pass
+            end_points = ballLocations1[bounceLocs[-1].index : len(ballLocations1)]
+            cend = getCurve(end_points, True, None)
+            if(cend != None):
+                curves.append(cend)
+            print("Off Table")
 
 
         # try:
         #     post_bounce_points = ballLocations1[bounceLocs[-1].index : len(ballLocations1)]
-        #     if(double_bounce):
-        #         cfinal = getCurve(post_bounce_points, False)
+        #     if(bound_crossed):
+        #         cfinal = getCurve(post_bounce_points, False, None)
         #     else:
-        #        cfinal = getCurve(post_bounce_points, True) 
+        #        cfinal = getCurve(post_bounce_points, True, None) 
 
         #     if(cfinal != None):
         #         curves.append(cfinal)
@@ -563,7 +635,7 @@ def show_replay():
     if(PASS):
         return
 
-    show_curve = False
+    show_curve = True
 
     if(show_curve):
 
@@ -573,12 +645,12 @@ def show_replay():
             x_vals = np.arange(0, width, 1)
             y_vals = quadratic(x_vals, parab.a, parab.b, parab.c)
             line = parab.line
-            slope, intercept = line
-            y_vals2 = x_vals * slope + intercept
-            # plt.plot(x_vals, y_vals, 'b')
-            plt.plot(x_vals, y_vals2, 'g')
-            # plt.ylim(ymin=invert_y(tableLoc), ymax=height)
-            # plt.vlines(x=netLoc, ymin=0, ymax=height, color='r', linestyle='-')
+            # slope, intercept = line
+            # y_vals2 = x_vals * slope + intercept
+            plt.plot(x_vals, y_vals, 'b')
+            # plt.plot(x_vals, y_vals2, 'g')
+            plt.ylim(ymin=invert_y(tableLoc), ymax=height)
+            plt.vlines(x=netLoc, ymin=0, ymax=height, color='r', linestyle='-')
         
         plt.show()
 
@@ -588,7 +660,7 @@ def show_replay():
         locations = turns[-1].ballLocs    
         for loc in locations:
             x_points.append(loc.x)
-            y_points.append(loc.depth)
+            y_points.append(invert_y(loc.y))
 
         # plt.ylim(ymin=invert_y(tableLoc), ymax=height)
         plt.plot(x_points, y_points, 'ok')
@@ -619,12 +691,12 @@ def show_replay():
         slope, intercept = parab.line
         y_vals = linear(slope, x_vals, intercept)
 
-        scaled_x_vals = (x_vals * 18.0) / float(shortR - shortL) - 11
+        scaled_x_vals = (x_vals * 18.0) / float(shortR - shortL) - 11.75
         scaled_y_vals = (y_vals * 10.0) / float(vert_start - vert_end) - 10
         scaled_z_vals = (z_vals * 3.0) / float(real_table_height)
 
         t = parab.time_span
-        wait_per_ball_move = t / (len(scaled_x_vals) / 2)
+        wait_per_ball_move = abs(t / (len(scaled_x_vals) / 2))
 
         if(parab.direction == "Right"):
             for i in range(prev_end, end, 2):
@@ -636,7 +708,7 @@ def show_replay():
                 ballZ = scaled_z_vals[i] - 0.7
                 points.append((ballX, ballY, ballZ))
 
-                update_3D_render(ballX, ballY, ballZ, points, "")
+                update_3D_render(ballX, ballY, ballZ, points, "", None)
                 time.sleep(wait_per_ball_move)
 
                 if(len(points) % PATH_LENGTH == 0):
@@ -658,7 +730,7 @@ def show_replay():
                 ballZ = scaled_z_vals[i] - 0.7
                 points.append((ballX, ballY, ballZ))
 
-                update_3D_render(ballX, ballY, ballZ, points, "")
+                update_3D_render(ballX, ballY, ballZ, points, "", None)
                 time.sleep(wait_per_ball_move)
 
                 if(len(points) % PATH_LENGTH == 0):
@@ -670,10 +742,12 @@ def show_replay():
                         pygame.quit
                         quit()
 
-        bounces_3d.append((ballX, ballY, 2.1))
+        if(not parab.air_intercept):
+            bounces_3d.append((ballX, ballY, 2.1))
+        
         prev_end = parab.intercept
         
-    update_3D_render(0, 0, 100, None, "")
+    update_3D_render(0, 0, 100, None, "", None)
     
     
 
@@ -683,12 +757,12 @@ def show_replay():
 
     for i in range(NUM_FRAMES):
         glRotatef(per_frame_horizontal, 0, 0, 1)
-        update_3D_render(0, 0, 100, None, "")
+        update_3D_render(0, 0, 100, None, "", None)
         time.sleep(0.01)
 
     for i in range(NUM_FRAMES):
         glRotatef(per_frame_vertical, 1, 0, 0)
-        update_3D_render(0, 0, 100, None, "")
+        update_3D_render(0, 0, 100, None, "", None)
         time.sleep(0.01)
 
     speed_sum = 0
@@ -700,21 +774,52 @@ def show_replay():
     avg_speed = 0
     if(tot != 0):
         avg_speed = int(((speed_sum / tot) / (width / 9)) * 14.67) / 10.0
+    
+    shotsQ1 = 0
+    shotsQ2 = 0
+    shotsQ3 = 0
+    shotsQ4 = 0
 
+    midpoint = int((vert_start - vert_end) / 2)
+    for b in turns[-1].bounceLocs:
+        if(b.x < netLoc):
+            if(b.depth < midpoint):
+                shotsQ1 += 1
+            else:
+                shotsQ2 += 1
+        else:
+            if(b.depth < midpoint):
+                shotsQ3 += 1
+            else:
+                shotsQ4 += 1
+        
+    total = shotsQ1 + shotsQ2 + shotsQ3 + shotsQ4
+    
+    p1 = 0
+    p2 = 0
+    p3 = 0
+    p4 = 0
+
+    if(total != 0):
+        p1 = int((shotsQ1 / float(total)) * 100)
+        p2 = int((shotsQ2 / float(total)) * 100)
+        p3 = int((shotsQ3 / float(total)) * 100)
+        p4 = int((shotsQ4 / float(total)) * 100)
+    
     for i in range(NUM_FRAMES):
         #DO NOTHING
         
-        update_3D_render(0, 0, 100, None, f"Average Speed: {avg_speed} mph")
-        time.sleep(0.01)
+        update_3D_render(0, 0, 100, None, f"Average Speed: {avg_speed} mph", (p1, p2, p3, p4))
+        time.sleep(0.03)
     
     for i in range(NUM_FRAMES):
         glRotatef(-per_frame_vertical, 1, 0, 0)
-        update_3D_render(0, 0, 100, None, "")
+        update_3D_render(0, 0, 100, None, "", None)
         time.sleep(0.01)
         
     for i in range(NUM_FRAMES):
         glRotatef(-per_frame_horizontal, 0, 0, 1)
-        update_3D_render(0, 0, 100, None, "")
+        update_3D_render(0, 0, 100, None, "", None)
         time.sleep(0.01)
 
     # pygame.quit()
@@ -785,7 +890,10 @@ while True:
             else:
                 side = "Right"
 
-            loc = ballLoc(x, y, r, time.time(), side, locCount)
+            loc = ballLoc(y, r, time.time(), side, locCount)
+            ### CHANGE
+            loc.alt_x = x
+            ########
 
             if(counter % 1 == 0):
                 circles2 = getCircle(img2)
@@ -817,7 +925,9 @@ while True:
                         else:
                             has_passed_right_bound = False
 
-                        loc.alt_x = x2
+                        ###CHANGE
+                        loc.x = x2
+                        #####
                         loc.depth = y2
             
             if(loc.x != None):
@@ -843,7 +953,7 @@ while True:
                 if(y >= tableLoc and has_moved_above_line):
                     if(bounces_on_current_side < 2 and loc.x > shortL and loc.x < shortR):
                         bounceLocs.append(loc)
-                        bounces_2d.append((loc.alt_x, loc.depth))
+                        bounces_2d.append((loc.x, loc.depth))
                         first_of_turn = False
                         boing.play()
                         has_moved_above_line = False
@@ -858,8 +968,6 @@ while True:
                     else:
                         left_score += 1
                     
-                    bounceLocs.append(loc)
-                    bounces_2d.append((loc.alt_x, loc.depth))
                     point_ended("")
                     beep.play()
                     bounces_on_current_side = 0

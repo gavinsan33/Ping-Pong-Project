@@ -1,5 +1,5 @@
 class curve:
-    def __init__(self, a, b, c, start, intercept, time_span, off_table, direction, line):
+    def __init__(self, a, b, c, start, intercept, time_span, off_table, direction, line, air_intercept):
         self.a = a
         self.b = b
         self.c = c
@@ -9,3 +9,4 @@ class curve:
         self.off_table = off_table
         self.direction = direction
         self.line = line
+        self.air_intercept = air_intercept

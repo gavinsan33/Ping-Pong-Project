@@ -80,21 +80,21 @@ def Cube(len, width, height, pos, color, outline):
     
     )
 
-    edges = (
+    # edges = (
 
-        (0, 1),
-        (0, 3),
-        (0, 4),
-        (2, 1),
-        (2, 3),
-        (2, 7),
-        (6, 3),
-        (6, 4),
-        (6, 7),
-        (5, 1),
-        (5, 4),
-        (5, 7),
-    )
+    #     (0, 1),
+    #     (0, 3),
+    #     (0, 4),
+    #     (2, 1),
+    #     (2, 3),
+    #     (2, 7),
+    #     (6, 3),
+    #     (6, 4),
+    #     (6, 7),
+    #     (5, 1),
+    #     (5, 4),
+    #     (5, 7),
+    # )
     
     surfaces = (
 
@@ -117,14 +117,14 @@ def Cube(len, width, height, pos, color, outline):
 
     glEnd()
 
-    glBegin(GL_LINES)
+    # glBegin(GL_LINES)
 
-    for edge in edges:
-        for vertex in edge:
-            if(outline): glColor3fv((1, 1, 1))
-            glVertex3fv(verticies[vertex])
+    # for edge in edges:
+    #     for vertex in edge:
+    #         if(outline): glColor3fv((1, 1, 1))
+    #         glVertex3fv(verticies[vertex])
 
-    glEnd()
+    # glEnd()
 
 def Circle(radius, resolution, pos, color, outline):
     x, y, z = pos
@@ -191,7 +191,7 @@ while True:
 
     #FLOOR
     #Cube(20, 20, 0.01, (0, 0, 0), (0, 1, 1), False)
-    Circle(15, 500, (0, 0, 0), (0, 1, 0.25), False)
+    # Circle(15, 500, (0, 0, 0), (0, 1, 0.25), False)
 
     #TABLE LEGS
     Cube(0.1, 0.1, 2, (-6, -4, 0), (.41, .35, .2), False)
@@ -209,8 +209,8 @@ while True:
     quad = gluNewQuadric()
     glTranslate(x, y, 2.5)
     ball = gluSphere(quad, 0.25, 50, 50)
-    x += 0.1
-    y += 0.0
+    # x += 0.1
+    # y += 0.0
     glPopMatrix()
 
     #NET

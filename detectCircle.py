@@ -76,15 +76,15 @@ elif(BALL_COLOR == "GREEN"):
     cv2.createTrackbar('B2', 'sliders', 245, 255, nothing)
 elif(BALL_COLOR == "PINK"):
     cv2.createTrackbar('param1', 'sliders', 27, 200, nothing)
-    cv2.createTrackbar('param2', 'sliders', 1, 200, nothing)
+    cv2.createTrackbar('param2', 'sliders', 5, 200, nothing)
     cv2.createTrackbar('min radius', 'sliders', 1, 200, nothing)
-    cv2.createTrackbar('max radius', 'sliders', 3, 500, nothing)
+    cv2.createTrackbar('max radius', 'sliders', 11, 500, nothing)
     cv2.createTrackbar('R1', 'sliders', 135, 255, nothing)
     cv2.createTrackbar('G1', 'sliders', 71, 255, nothing)
     cv2.createTrackbar('B1', 'sliders', 52, 255, nothing)
-    cv2.createTrackbar('R2', 'sliders', 255, 255, nothing)
-    cv2.createTrackbar('G2', 'sliders', 255, 255, nothing)
-    cv2.createTrackbar('B2', 'sliders', 255, 255, nothing)
+    cv2.createTrackbar('R2', 'sliders', 172, 255, nothing)
+    cv2.createTrackbar('G2', 'sliders', 180, 255, nothing)
+    cv2.createTrackbar('B2', 'sliders', 149, 255, nothing)
 
 cv2.createTrackbar('Table', 'sliders', 327, width, nothing)
 
@@ -531,7 +531,7 @@ while True:
             frame_sum = 0
 
     
-    cv2.putText(img, f"Left Score: {left_score} Right Score: {right_score}", (7, 70), cv2.FONT_HERSHEY_PLAIN, 2, (0, 0, 255), 3)
+    # cv2.putText(img, f"Left Score: {left_score} Right Score: {right_score}", (7, 70), cv2.FONT_HERSHEY_PLAIN, 2, (0, 0, 255), 3)
     cv2.imshow('Ball Tracker', img)
 
     if(cv2.waitKey(1) & 0xFF == ord('q')):
@@ -542,7 +542,7 @@ while True:
     counter += 1
 
 
-show_curve = False
+show_curve = True
 
 if(show_curve):
     #SHOW CURVE ON GRAPH
@@ -553,14 +553,14 @@ if(show_curve):
         plt.plot(x_vals, y_vals, 'b')
         plt.ylim(ymin=invert_y(tableLoc), ymax=height)
 
-    # x_points = []
-    # y_points = []
+    x_points = []
+    y_points = []
 
-    # for loc in ballLocations1:
-    #     x_points.append(loc.x)
-    #     y_points.append(invert_y(loc.y))
+    for loc in ballLocations1:
+        x_points.append(loc.x)
+        y_points.append(invert_y(loc.y))
 
-    # plt.plot(x_points, y_points, 'ok')
+    plt.plot(x_points, y_points, 'ok')
     plt.vlines(x=netLoc, ymin=0, ymax=height, color='r', linestyle='-')
     plt.show()
 
